@@ -207,6 +207,11 @@ function registerAdminHandlers(socket: Socket): void {
 
   // ── game:start ───────────────────────────────────────────────────────────
   socket.on("game:start", () => {
+    console.log("[admin] game:start received", {
+      socketId: socket.id,
+      isAdmin: socket.data.isAdmin,
+    });
+  
     if (!requireAdmin(socket)) return;
     startGame();
   });

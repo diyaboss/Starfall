@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect} from "react";
 import { getSocket, connectSocket, disconnectSocket } from "@/socket/socket";
 import { registerSocketEvents } from "@/socket/events";
 import { useGameStore } from "@/store/gameStore";
@@ -11,21 +11,17 @@ import type { JoinPayload } from "@shared/types";
 // ---------------------------------------------------------------------------
 
 export function useSocketConnection(): void {
-  const registered = useRef(false);
-
-  useEffect(() => {
-    if (registered.current) return;
-    registered.current = true;
-
-    registerSocketEvents();
-    useGameStore.getState().setConnectionStatus("connecting");
-    connectSocket();
-
-    return () => {
-      disconnectSocket();
-    };
-  }, []);
-}
+    useEffect(() => {
+      registerSocketEvents();
+      useGameStore.getState().setConnectionStatus("connecting");
+      connectSocket();
+  
+      return () => {
+        disconnectSocket();
+        useGameStore.getState().setConnectionStatus("disconnected");
+      };
+    }, []);
+  }
 
 // ---------------------------------------------------------------------------
 // useJoin

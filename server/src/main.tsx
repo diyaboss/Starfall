@@ -11,7 +11,7 @@ function App(): React.ReactElement {
   const myPlayer = useGameStore(selectMyPlayer);
   const phase = useGameStore(selectPhase);
 
-  if (!myPlayer || phase === "lobby" || phase === "tutorial") {
+  if (!myPlayer || phase === "lobby" ) {
     return <LobbyScreen />;
   }
 

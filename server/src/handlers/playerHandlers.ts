@@ -243,12 +243,19 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
 
     // Admin elevation
     const adminCode = process.env["ADMIN_CODE"];
+
+    console.log("[join admin check]", {
+      username: payload.username,
+      receivedAdminCode: payload.adminCode,
+      expectedAdminCode: adminCode,
+    });
     if (
       adminCode &&
-      typeof payload?.adminCode === "string" &&
+      typeof payload.adminCode === "string" &&
       payload.adminCode === adminCode
     ) {
       player.isAdmin = true;
+      socket.data.isAdmin = true;
       socket.join(ROOM_ADMIN);
     }
 
@@ -303,6 +310,7 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
     socket.join(sectorRoom(player.sectorId));
 
     if (player.isAdmin) {
+      socket.data.isAdmin = true;
       socket.join(ROOM_ADMIN);
     }
 
