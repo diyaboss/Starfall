@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    /* Language */
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2020"],
+
+    /* Strictness */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+
+    /* Output */
+    "outDir": "./dist",
+    /*
+     * rootDirs tells TypeScript to treat both src/ and shared/ as
+     * virtual roots for module resolution purposes.  This allows
+     * @shared/* path aliases to resolve without widening rootDir to
+     * the repo root (which would pollute dist/ with shared/ output).
+     */
+    "rootDirs": ["./src", "../shared"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    /* Module resolution */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    },
+
+    /* Skips */
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
