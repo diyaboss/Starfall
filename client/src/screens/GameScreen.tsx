@@ -1,5 +1,11 @@
-import React, { useCallback, useRef, useState } from "react";
-import { useGameStore, selectMyPlayer, selectPhase, selectPlayers, selectFleets } from "@/store/gameStore";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useGameStore,
+  selectMyPlayer,
+  selectPhase,
+  selectPlayers,
+  selectFleets,
+} from "@/store/gameStore";
 import { useEmit } from "@/hooks/useSocket";
 import { GalaxyMap } from "@/components/GalaxyMap/GalaxyMap";
 import { HUD } from "@/components/HUD/HUD";
@@ -9,6 +15,14 @@ import type { ChatMessage, ChatChannel } from "@shared/types";
 // Chat panel
 // ---------------------------------------------------------------------------
 
+const CHANNEL_COLORS: Record<string, string> = {
+  global: "#64748b",
+  fleet:  "#3b82f6",
+  local:  "#22c55e",
+  system: "#f59e0b",
+  admin:  "#ef4444",
+};
+
 function ChatPanel(): React.ReactElement {
   const messages = useGameStore((s) => s.gameState?.globalChatLog ?? []);
   const myPlayer = useGameStore(selectMyPlayer);
@@ -17,6 +31,11 @@ function ChatPanel(): React.ReactElement {
   const [channel, setChannel] = useState<ChatChannel>("global");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll on new messages
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || !myPlayer) return;
@@ -24,36 +43,41 @@ function ChatPanel(): React.ReactElement {
     setText("");
   }, [text, channel, emit, myPlayer]);
 
-  const channelColor: Record<string, string> = {
-    global: "#94a3b8",
-    fleet:  "#3b82f6",
-    local:  "#22c55e",
-    system: "#f59e0b",
-    admin:  "#ef4444",
-  };
-
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#0f172a",
-        borderLeft: "1px solid #1e293b",
+        background: "#070f1e",
+        borderLeft: "1px solid #0f172a",
         fontFamily: "monospace",
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "8px 12px",
-          borderBottom: "1px solid #1e293b",
-          fontSize: 12,
-          color: "#64748b",
+          padding: "10px 14px",
+          borderBottom: "1px solid #0f172a",
+          fontSize: 10,
+          color: "#334155",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
           flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        Chat
+        <div
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "#334155",
+          }}
+        />
+        Comms
       </div>
 
       {/* Message list */}
@@ -61,29 +85,40 @@ function ChatPanel(): React.ReactElement {
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "8px 12px",
+          padding: "10px 14px",
           display: "flex",
           flexDirection: "column",
-          gap: 4,
+          gap: 5,
         }}
       >
+        {messages.length === 0 && (
+          <div style={{ fontSize: 11, color: "#1e293b", fontStyle: "italic", marginTop: 8 }}>
+            No messages yet.
+          </div>
+        )}
         {messages.map((msg: ChatMessage) => (
-          <div key={msg.id} style={{ fontSize: 11, lineHeight: 1.5 }}>
+          <div key={msg.id} style={{ fontSize: 11, lineHeight: 1.55 }}>
             <span
               style={{
-                color: channelColor[msg.channel] ?? "#64748b",
-                marginRight: 6,
+                color: CHANNEL_COLORS[msg.channel] ?? "#475569",
+                marginRight: 5,
                 fontSize: 9,
                 textTransform: "uppercase",
+                letterSpacing: "0.06em",
               }}
             >
               [{msg.channel}]
             </span>
-            <span style={{ color: msg.senderColor, fontWeight: 600 }}>
+            <span
+              style={{
+                color: msg.senderColor,
+                fontWeight: 700,
+              }}
+            >
               {msg.senderCallsign}
             </span>
-            <span style={{ color: "#64748b" }}>: </span>
-            <span style={{ color: "#cbd5e1" }}>{msg.text}</span>
+            <span style={{ color: "#334155" }}>: </span>
+            <span style={{ color: "#94a3b8" }}>{msg.text}</span>
           </div>
         ))}
         <div ref={bottomRef} />
@@ -92,28 +127,31 @@ function ChatPanel(): React.ReactElement {
       {/* Input */}
       <div
         style={{
-          padding: "8px 12px",
-          borderTop: "1px solid #1e293b",
+          padding: "8px 10px",
+          borderTop: "1px solid #0f172a",
           display: "flex",
-          gap: 6,
+          gap: 5,
           flexShrink: 0,
+          background: "#050d1a",
         }}
       >
         <select
           value={channel}
           onChange={(e) => setChannel(e.target.value as ChatChannel)}
           style={{
-            background: "#1e293b",
-            border: "1px solid #334155",
-            borderRadius: 4,
-            color: "#94a3b8",
-            fontSize: 11,
-            padding: "4px 6px",
+            background: "#0f172a",
+            border: "1px solid #1e293b",
+            borderRadius: 5,
+            color: CHANNEL_COLORS[channel] ?? "#64748b",
+            fontSize: 10,
+            padding: "5px 4px",
+            fontFamily: "monospace",
+            cursor: "pointer",
           }}
         >
-          <option value="global">Global</option>
-          {myPlayer?.fleetId && <option value="fleet">Fleet</option>}
-          <option value="local">Local</option>
+          <option value="global">GLB</option>
+          {myPlayer?.fleetId && <option value="fleet">FLT</option>}
+          <option value="local">LCL</option>
         </select>
         <input
           type="text"
@@ -121,31 +159,35 @@ function ChatPanel(): React.ReactElement {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           maxLength={200}
-          placeholder="Send message…"
+          placeholder="Transmit…"
           style={{
             flex: 1,
-            background: "#1e293b",
-            border: "1px solid #334155",
-            borderRadius: 4,
-            color: "#f1f5f9",
+            background: "#0f172a",
+            border: "1px solid #1e293b",
+            borderRadius: 5,
+            color: "#e2e8f0",
             fontSize: 11,
-            padding: "4px 8px",
+            padding: "5px 8px",
             outline: "none",
+            fontFamily: "monospace",
           }}
         />
         <button
           onClick={handleSend}
           style={{
-            background: "#3b82f6",
-            border: "none",
-            borderRadius: 4,
-            color: "#fff",
-            fontSize: 11,
-            padding: "4px 10px",
+            background: "#1e3a5f",
+            border: "1px solid #2563eb44",
+            borderRadius: 5,
+            color: "#60a5fa",
+            fontSize: 10,
+            padding: "5px 10px",
             cursor: "pointer",
+            fontFamily: "monospace",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
           }}
         >
-          Send
+          ▶
         </button>
       </div>
     </div>
@@ -153,44 +195,88 @@ function ChatPanel(): React.ReactElement {
 }
 
 // ---------------------------------------------------------------------------
-// Scoreboard panel
+// Scoreboard footer
 // ---------------------------------------------------------------------------
 
 function ScoreboardPanel(): React.ReactElement {
   const fleets = useGameStore(selectFleets);
   const players = useGameStore(selectPlayers);
   const entries = Object.values(fleets).sort((a, b) => b.fleetPower - a.fleetPower);
-  const soloPlayers = Object.values(players).filter((p) => !p.fleetId && !p.isDead);
+  const soloCount = Object.values(players).filter((p) => !p.fleetId && !p.isDead).length;
 
   return (
     <div
       style={{
-        background: "#0f172a",
-        borderTop: "1px solid #1e293b",
-        padding: "8px 12px",
+        background: "#050d1a",
+        borderTop: "1px solid #0f172a",
+        padding: "7px 16px",
         fontFamily: "monospace",
         fontSize: 11,
-        color: "#94a3b8",
+        color: "#334155",
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        flexShrink: 0,
+        minHeight: 36,
+        overflowX: "auto",
       }}
     >
-      <div style={{ marginBottom: 6, color: "#64748b" }}>Leaderboard</div>
-      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-        {entries.map((fleet) => (
-          <div key={fleet.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ color: fleet.hasBeaconCore ? "#a855f7" : "#e2e8f0", fontWeight: 600 }}>
-              {fleet.name}
-            </span>
-            <span style={{ color: "#64748b" }}>FP: {fleet.fleetPower}</span>
-            <span style={{ color: "#64748b" }}>({fleet.memberIds.length})</span>
-            {fleet.hasBeaconCore && <span style={{ color: "#a855f7" }}>★</span>}
-          </div>
-        ))}
-        {soloPlayers.length > 0 && (
-          <div style={{ color: "#475569" }}>
-            +{soloPlayers.length} solo
-          </div>
-        )}
-      </div>
+      <span
+        style={{
+          fontSize: 9,
+          color: "#1e293b",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          marginRight: 8,
+          flexShrink: 0,
+        }}
+      >
+        Standings
+      </span>
+
+      {entries.length === 0 && soloCount === 0 ? (
+        <span style={{ fontSize: 10, color: "#1e293b" }}>No fleets yet.</span>
+      ) : (
+        <>
+          {entries.map((fleet, i) => (
+            <React.Fragment key={fleet.id}>
+              {i > 0 && (
+                <span style={{ color: "#1e293b", margin: "0 6px" }}>·</span>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                {fleet.hasBeaconCore && (
+                  <span style={{ fontSize: 10, color: "#a855f7" }}>★</span>
+                )}
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: fleet.hasBeaconCore ? "#a855f7" : "#475569",
+                  }}
+                >
+                  {fleet.name}
+                </span>
+                <span style={{ fontSize: 10, color: "#1e293b" }}>
+                  FP {fleet.fleetPower}
+                </span>
+                <span style={{ fontSize: 9, color: "#1e293b" }}>
+                  {fleet.memberIds.length}p
+                </span>
+              </div>
+            </React.Fragment>
+          ))}
+
+          {soloCount > 0 && (
+            <>
+              {entries.length > 0 && (
+                <span style={{ color: "#1e293b", margin: "0 6px" }}>·</span>
+              )}
+              <span style={{ fontSize: 10, color: "#1e293b" }}>
+                {soloCount} solo
+              </span>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -210,34 +296,66 @@ function GameOverOverlay(): React.ReactElement | null {
       style={{
         position: "absolute",
         inset: 0,
-        background: "rgba(0,0,0,0.75)",
+        background: "rgba(0,0,0,0.8)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 100,
         fontFamily: "monospace",
+        backdropFilter: "blur(4px)",
       }}
     >
       <div
         style={{
-          background: "#0f172a",
-          border: "1px solid #334155",
-          borderRadius: 12,
-          padding: "40px 60px",
+          background: "#070f1e",
+          border: "1px solid #1e293b",
+          borderRadius: 14,
+          padding: "48px 64px",
           textAlign: "center",
           color: "#f1f5f9",
+          boxShadow: "0 0 60px rgba(0,0,0,0.8)",
         }}
       >
-        <div style={{ fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Game Over</div>
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.2em",
+            color: "#334155",
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          Mission Complete
+        </div>
+        <div
+          style={{
+            fontSize: 36,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            marginBottom: 20,
+            color: "#f1f5f9",
+          }}
+        >
+          GAME OVER
+        </div>
         {gameState.winner ? (
           <>
-            <div style={{ fontSize: 16, color: "#94a3b8", marginBottom: 8 }}>Winner</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}>
+            <div style={{ fontSize: 12, color: "#475569", marginBottom: 8, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Winner
+            </div>
+            <div
+              style={{
+                fontSize: 26,
+                fontWeight: 800,
+                color: "#22c55e",
+                textShadow: "0 0 30px #22c55e66",
+              }}
+            >
               {gameState.winner}
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 14, color: "#64748b" }}>No winner — time expired.</div>
+          <div style={{ fontSize: 14, color: "#334155" }}>No winner — time expired.</div>
         )}
       </div>
     </div>
@@ -260,9 +378,11 @@ export function GameScreen(): React.ReactElement {
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          background: "#0f172a",
-          color: "#94a3b8",
+          background: "#050d1a",
+          color: "#334155",
           fontFamily: "monospace",
+          fontSize: 13,
+          letterSpacing: "0.06em",
         }}
       >
         Loading game state…
@@ -276,42 +396,45 @@ export function GameScreen(): React.ReactElement {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f172a",
+        background: "#050d1a",
         overflow: "hidden",
       }}
     >
       {/* Main content row */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
         {/* Map area */}
         <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
           <GalaxyMap />
           <HUD />
           <GameOverOverlay />
 
-          {/* Chat toggle button */}
+          {/* Chat toggle */}
           <button
             onClick={() => setShowChat((v) => !v)}
             style={{
               position: "absolute",
               bottom: 12,
               left: 12,
-              background: "#1e293b",
-              border: "1px solid #334155",
+              background: "rgba(9,16,32,0.85)",
+              border: "1px solid #1e293b",
               borderRadius: 6,
-              color: "#94a3b8",
-              fontSize: 11,
-              padding: "4px 10px",
+              color: "#334155",
+              fontSize: 10,
+              padding: "5px 10px",
               cursor: "pointer",
               zIndex: 10,
+              fontFamily: "monospace",
+              letterSpacing: "0.06em",
+              backdropFilter: "blur(4px)",
             }}
           >
-            {showChat ? "Hide Chat" : "Show Chat"}
+            {showChat ? "HIDE COMMS" : "SHOW COMMS"}
           </button>
         </div>
 
         {/* Chat panel */}
         {showChat && (
-          <div style={{ width: 280, flexShrink: 0 }}>
+          <div style={{ width: 260, flexShrink: 0 }}>
             <ChatPanel />
           </div>
         )}
