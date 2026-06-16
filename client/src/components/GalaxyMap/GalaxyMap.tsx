@@ -376,20 +376,65 @@ interface PlayerDotProps {
 
 function PlayerDot({ player, sector, index, total }: PlayerDotProps): React.ReactElement {
   const angle = total > 1 ? (index / total) * 2 * Math.PI - Math.PI / 2 : 0;
-  const offset = total > 1 ? NODE_RADIUS * 0.6 : 0;
+  const offset = total > 1 ? NODE_RADIUS * 0.9 : NODE_RADIUS * 0.58;
   const cx = sector.x + Math.cos(angle) * offset;
   const cy = sector.y + Math.sin(angle) * offset;
 
+  const opacity = player.isDead ? 0.25 : player.isConnected ? 1 : 0.45;
+  const initials = player.callsign
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={4.5}
-      fill={player.color}
-      stroke="#0f172a"
-      strokeWidth={1.5}
-      opacity={player.isDead ? 0.25 : player.isConnected ? 1 : 0.45}
-    />
+    <g style={{ pointerEvents: "none" }} opacity={opacity}>
+      <title>
+        {player.callsign} ({player.username})
+      </title>
+
+      <circle
+        cx={cx}
+        cy={cy}
+        r={10}
+        fill={player.color}
+        opacity={0.18}
+      />
+
+      <circle
+        cx={cx}
+        cy={cy}
+        r={7}
+        fill="#020617"
+        stroke={player.color}
+        strokeWidth={2}
+      />
+
+      <circle
+        cx={cx}
+        cy={cy}
+        r={4.2}
+        fill={player.color}
+        stroke="#ffffff"
+        strokeWidth={0.8}
+      />
+
+      <text
+        x={cx}
+        y={cy + 0.5}
+        fontSize={5}
+        fill="#ffffff"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontWeight: 800,
+          pointerEvents: "none",
+        }}
+      >
+        {initials}
+      </text>
+    </g>
   );
 }
 
