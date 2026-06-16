@@ -19,7 +19,7 @@ function App(): React.ReactElement {
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
+  
     <App />
-  </React.StrictMode>
+  
 );
