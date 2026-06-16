@@ -753,18 +753,21 @@ export function buildClientSnapshot(playerId: string): ClientGameState | null {
   }
 
   // Build preview sectors record
-  const previewSectors: Record<string, SectorPreview> = {};
-  for (const sectorId of previewIds) {
-    const sector = gameState.sectors[sectorId];
-    if (!sector) continue;
-    previewSectors[sectorId] = {
-      id: sector.id,
-      name: sector.name,
-      region: sector.region,
-      connectedTo: sector.connectedTo,
-      faction: sector.faction,
-    };
-  }
+const previewSectors: Record<string, SectorPreview> = {};
+for (const sectorId of previewIds) {
+  const sector = gameState.sectors[sectorId];
+  if (!sector) continue;
+
+  previewSectors[sectorId] = {
+    id: sector.id,
+    name: sector.name,
+    region: sector.region,
+    x: sector.x,
+    y: sector.y,
+    connectedTo: sector.connectedTo,
+    faction: sector.faction,
+  };
+}
 
   // Build public player info (strip shard values)
   const players: Record<string, PublicPlayerInfo> = {};

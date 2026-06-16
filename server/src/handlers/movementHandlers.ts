@@ -226,6 +226,33 @@ export function registerMovementHandlers(io: Server, socket: Socket): void {
       fuel: result.fuelRemaining,
     };
     socket.emit("player:updated", updatedPayload);
+    // Send discovered sector to the moving player so solo players can promote
+// preview sector -> visible sector after movement.
+if (!wasAlreadyDiscovered) {
+  const discoveredSector = gameState.sectors[result.toSectorId];
+
+  if (discoveredSector) {
+    socket.emit("map:sectorDiscovered", {
+      sectorId: result.toSectorId,
+      discoveredByPlayerId: playerId,
+      sector: {
+        id: discoveredSector.id,
+        name: discoveredSector.name,
+        region: discoveredSector.region,
+        x: discoveredSector.x,
+        y: discoveredSector.y,
+        connectedTo: discoveredSector.connectedTo,
+        fuelCost: discoveredSector.fuelCost,
+        faction: discoveredSector.faction,
+        factionServiceId: discoveredSector.factionServiceId,
+        missionIds: discoveredSector.missionIds,
+        navKeyPresent: discoveredSector.navKeyPresent,
+        npcConvoyIds: discoveredSector.npcConvoyIds,
+        discoveredBy: discoveredSector.discoveredBy,
+      },
+    });
+  }
+}
 
     // ── Discovery propagation ─────────────────────────────────────────────
     // Only fire the fleet discovery event if:

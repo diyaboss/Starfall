@@ -127,7 +127,9 @@ function startGame(): void {
     return;
   }
 
-  const { tutorialDurationMs } = gameState.config;
+  const tutorialDurationMs = 5000;
+  
+  console.log("[startGame] tutorialDurationMs =", tutorialDurationMs);
 
   setGamePhase("tutorial");
   broadcastSystem("📖 Tutorial phase has begun. The game starts shortly…");

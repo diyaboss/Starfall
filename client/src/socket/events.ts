@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import type {
   ServerToClientEvents,
 } from "./socket";
-import type { SightingEntry, Notification } from "@/types/game";
+import type { Sector, SightingEntry, Notification } from "@/types/game";
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -63,6 +63,21 @@ export function registerSocketEvents(): void {
   // ── player:moved ─────────────────────────────────────────────────────────
   socket.on("player:moved", (payload) => {
     store().applyPlayerMoved(payload);
+  });
+
+  socket.on("map:sectorDiscovered", (payload: any) => {
+    store().applySectorDiscovered({
+      sectorId: payload.sectorId,
+      discoveredByPlayerId: payload.discoveredByPlayerId,
+      sector: payload.sector as Sector,
+    });
+    store().addNotification({
+      id: crypto.randomUUID(),
+      text: `New sector discovered: ${payload.sector.name}`,
+      severity: "success",
+      timestamp: Date.now(),
+      ttlMs: 3500,
+    });
   });
 
   // ── player:died ──────────────────────────────────────────────────────────

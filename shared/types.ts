@@ -135,6 +135,8 @@ export interface SectorPreview {
   id: string;
   name: string;
   region: string;
+  x: number;
+  y: number;
   connectedTo: string[];
   /** Faction color hint visible even on dark nodes */
   faction: FactionID | null;

@@ -65,6 +65,11 @@ export interface GameStoreState {
   // Actions — beacon
   applyBeaconMoved: (payload: BeaconMovedPayload) => void;
   applyBeaconPhaseChanged: (payload: BeaconPhaseChangedPayload) => void;
+  applySectorDiscovered: (payload: {
+    sectorId: string;
+    discoveredByPlayerId: string;
+    sector: import("@shared/types").Sector;
+  }) => void;
 
   // Actions — chat
   appendChatMessage: (msg: ChatMessage) => void;
@@ -141,8 +146,13 @@ export const useGameStore = create<GameStoreState>((set) => ({
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   // ── Snapshot ──────────────────────────────────────────────────────────────
-  applySnapshot: (gs, playerId) =>
-    set({ gameState: gs, myPlayerId: playerId }),
+  applySnapshot: (gs, playerId) =>{
+    console.log("SNAPSHOT visibleSectors", Object.keys(gs.visibleSectors));
+console.log("SNAPSHOT previewSectors", Object.keys(gs.previewSectors));
+    
+    
+    set({ gameState: gs, myPlayerId: playerId })
+},
 
   // ── Phase ─────────────────────────────────────────────────────────────────
   setPhase: (phase) =>
@@ -357,6 +367,24 @@ export const useGameStore = create<GameStoreState>((set) => ({
       };
       return { gameState: { ...s.gameState, beacon } };
     }),
+    applySectorDiscovered: (payload) =>
+        set((s) => {
+          if (!s.gameState) return {};
+      
+          const nextPreviewSectors = { ...s.gameState.previewSectors };
+          delete nextPreviewSectors[payload.sectorId];
+      
+          return {
+            gameState: {
+              ...s.gameState,
+              visibleSectors: {
+                ...s.gameState.visibleSectors,
+                [payload.sectorId]: payload.sector,
+              },
+              previewSectors: nextPreviewSectors,
+            },
+          };
+        }),
 
   // ── Chat ─────────────────────────────────────────────────────────────────
   appendChatMessage: (msg) =>

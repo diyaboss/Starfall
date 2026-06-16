@@ -212,7 +212,10 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
    *   7. Broadcast player:joined to all other clients
    *   8. Broadcast system message
    */
+  
   socket.on("player:join", (payload: JoinPayload) => {
+    
+
     const username = sanitiseUsername(payload?.username);
     if (!username) {
       emitError(socket, "invalid_username", "Username must be 2–24 alphanumeric characters.");
