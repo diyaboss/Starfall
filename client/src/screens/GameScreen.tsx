@@ -5,10 +5,14 @@ import {
   selectPhase,
   selectPlayers,
   selectFleets,
+  selectVisibleSectors,
 } from "@/store/gameStore";
 import { useEmit } from "@/hooks/useSocket";
 import { GalaxyMap } from "@/components/GalaxyMap/GalaxyMap";
 import { HUD } from "@/components/HUD/HUD";
+import { StationPanel } from "@/components/panels/StationPanel";
+import { CoordinatePanel } from "@/components/panels/CoordinatePanel";
+import { MissionPanel } from "@/components/panels/MissionPanel";
 import type { ChatMessage, ChatChannel } from "@shared/types";
 
 // ---------------------------------------------------------------------------
@@ -96,31 +100,49 @@ function ChatPanel(): React.ReactElement {
             No messages yet.
           </div>
         )}
-        {messages.map((msg: ChatMessage) => (
-          <div key={msg.id} style={{ fontSize: 11, lineHeight: 1.55 }}>
-            <span
+        {messages.map((msg: ChatMessage) => {
+          const time = new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+          const isSystem = msg.channel === "system";
+          const isFleet = msg.channel === "fleet";
+
+          return (
+            <div
+              key={msg.id}
               style={{
-                color: CHANNEL_COLORS[msg.channel] ?? "#475569",
-                marginRight: 5,
-                fontSize: 9,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
+                fontSize: 11,
+                lineHeight: 1.55,
+                background: isSystem ? "rgba(245, 158, 11, 0.08)" : isFleet ? "rgba(59, 130, 246, 0.08)" : "transparent",
+                padding: isSystem || isFleet ? "4px 6px" : "2px 6px",
+                borderRadius: 4,
+                borderLeft: isSystem ? "2px solid #f59e0b" : isFleet ? "2px solid #3b82f6" : "2px solid transparent",
+                marginLeft: -6,
               }}
             >
-              [{msg.channel}]
-            </span>
-            <span
-              style={{
-                color: msg.senderColor,
-                fontWeight: 700,
-              }}
-            >
-              {msg.senderCallsign}
-            </span>
-            <span style={{ color: "#334155" }}>: </span>
-            <span style={{ color: "#94a3b8" }}>{msg.text}</span>
-          </div>
-        ))}
+              <span style={{ color: "#475569", fontSize: 9, marginRight: 6 }}>[{time}]</span>
+              <span
+                style={{
+                  color: CHANNEL_COLORS[msg.channel] ?? "#475569",
+                  marginRight: 5,
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                [{msg.channel}]
+              </span>
+              <span
+                style={{
+                  color: msg.senderColor,
+                  fontWeight: 700,
+                }}
+              >
+                {msg.senderCallsign}
+              </span>
+              <span style={{ color: "#334155" }}>: </span>
+              <span style={{ color: isSystem ? "#fcd34d" : isFleet ? "#93c5fd" : "#94a3b8" }}>{msg.text}</span>
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -288,21 +310,33 @@ function ScoreboardPanel(): React.ReactElement {
 function GameOverOverlay(): React.ReactElement | null {
   const phase = useGameStore(selectPhase);
   const gameState = useGameStore((s) => s.gameState);
+  const setPhase = useGameStore((s) => s.setPhase);
 
   if (phase !== "ended" || !gameState) return null;
+
+  const handleReturnToLobby = () => {
+    // Return locally to lobby view
+    setPhase("lobby");
+  };
+
+  const handleResetGame = () => {
+    import("@/socket/socket").then((m) => m.getSocket().emit("admin:resetGame"));
+  };
+
+  const isAdmin = gameState.yourPlayer?.isAdmin ?? false;
 
   return (
     <div
       style={{
         position: "absolute",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "rgba(0,0,0,0.85)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 100,
         fontFamily: "monospace",
-        backdropFilter: "blur(4px)",
+        backdropFilter: "blur(6px)",
       }}
     >
       <div
@@ -313,14 +347,15 @@ function GameOverOverlay(): React.ReactElement | null {
           padding: "48px 64px",
           textAlign: "center",
           color: "#f1f5f9",
-          boxShadow: "0 0 60px rgba(0,0,0,0.8)",
+          boxShadow: "0 0 60px rgba(0,0,0,0.9)",
+          minWidth: 400,
         }}
       >
         <div
           style={{
             fontSize: 10,
             letterSpacing: "0.2em",
-            color: "#334155",
+            color: "#64748b",
             textTransform: "uppercase",
             marginBottom: 12,
           }}
@@ -332,31 +367,83 @@ function GameOverOverlay(): React.ReactElement | null {
             fontSize: 36,
             fontWeight: 900,
             letterSpacing: "0.08em",
-            marginBottom: 20,
+            marginBottom: 24,
             color: "#f1f5f9",
           }}
         >
           GAME OVER
         </div>
+
         {gameState.winner ? (
-          <>
-            <div style={{ fontSize: 12, color: "#475569", marginBottom: 8, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Winner
+          <div style={{ marginBottom: 32, textAlign: "left", background: "rgba(15,23,42,0.6)", padding: "20px", borderRadius: "8px", border: "1px solid #1e293b" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "#94a3b8" }}>Winner</span>
+              <span style={{ color: "#22c55e", fontWeight: "bold" }}>{gameState.winner}</span>
             </div>
-            <div
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "#94a3b8" }}>Fleet Name</span>
+              <span style={{ color: "#e2e8f0", fontWeight: "bold" }}>{gameState.winnerFleetName || "None"}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "#94a3b8" }}>Beacon Sector</span>
+              <span style={{ color: "#e2e8f0", fontWeight: "bold" }}>{gameState.beacon.convergenceSectorId || "Unknown"}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "#94a3b8" }}>Explored Sectors</span>
+              <span style={{ color: "#e2e8f0", fontWeight: "bold" }}>{gameState.finalExploredSectorCount ?? 0}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "#94a3b8" }}>Fuel Remaining</span>
+              <span style={{ color: "#e2e8f0", fontWeight: "bold" }}>{gameState.finalFuelRemaining ?? 0}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#94a3b8" }}>Shard Count</span>
+              <span style={{ color: "#e2e8f0", fontWeight: "bold" }}>{gameState.finalShardCount ?? 0}</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 32 }}>
+            No winner — time expired.
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <button
+            onClick={handleReturnToLobby}
+            style={{
+              padding: "10px 20px",
+              background: "#1e293b",
+              border: "1px solid #334155",
+              color: "#e2e8f0",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontFamily: "monospace",
+              fontSize: 12,
+              letterSpacing: "0.05em",
+            }}
+          >
+            RETURN TO LOBBY
+          </button>
+
+          {isAdmin && (
+            <button
+              onClick={handleResetGame}
               style={{
-                fontSize: 26,
-                fontWeight: 800,
-                color: "#22c55e",
-                textShadow: "0 0 30px #22c55e66",
+                padding: "10px 20px",
+                background: "#ef4444",
+                border: "none",
+                color: "#fff",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontFamily: "monospace",
+                fontSize: 12,
+                letterSpacing: "0.05em",
               }}
             >
-              {gameState.winner}
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 14, color: "#334155" }}>No winner — time expired.</div>
-        )}
+              RESET GAME
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -368,7 +455,29 @@ function GameOverOverlay(): React.ReactElement | null {
 
 export function GameScreen(): React.ReactElement {
   const myPlayer = useGameStore(selectMyPlayer);
+  const visibleSectors = useGameStore(selectVisibleSectors);
+  const messages = useGameStore((s) => s.gameState?.globalChatLog ?? []);
+  
   const [showChat, setShowChat] = useState(true);
+  const [showStation, setShowStation] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Update unread count when messages change and chat is hidden
+  useEffect(() => {
+    if (!showChat) {
+      setUnreadCount((prev) => prev + 1);
+    }
+  }, [messages.length]);
+
+  // Reset unread count when chat is opened
+  useEffect(() => {
+    if (showChat) {
+      setUnreadCount(0);
+    }
+  }, [showChat]);
+
+  const currentSector = myPlayer ? visibleSectors[myPlayer.sectorId] : null;
+  const hasStation = currentSector?.factionServiceId != null;
 
   if (!myPlayer) {
     return (
@@ -406,6 +515,8 @@ export function GameScreen(): React.ReactElement {
         <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
           <GalaxyMap />
           <HUD />
+          <CoordinatePanel />
+          <MissionPanel />
           <GameOverOverlay />
 
           {/* Chat toggle */}
@@ -422,14 +533,58 @@ export function GameScreen(): React.ReactElement {
               fontSize: 10,
               padding: "5px 10px",
               cursor: "pointer",
-              zIndex: 10,
               fontFamily: "monospace",
-              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              zIndex: 30,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
               backdropFilter: "blur(4px)",
             }}
           >
             {showChat ? "HIDE COMMS" : "SHOW COMMS"}
+            {!showChat && unreadCount > 0 && (
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  boxShadow: "0 0 5px #ef4444",
+                }}
+              />
+            )}
           </button>
+
+          {/* Station toggle */}
+          {hasStation && (
+            <button
+              onClick={() => setShowStation(true)}
+              style={{
+                position: "absolute",
+                bottom: 12,
+                left: 110,
+                background: "rgba(37, 99, 235, 0.2)",
+                border: "1px solid #3b82f6",
+                borderRadius: 6,
+                color: "#60a5fa",
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "5px 10px",
+                cursor: "pointer",
+                zIndex: 10,
+                fontFamily: "monospace",
+                letterSpacing: "0.06em",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              DOCK STATION
+            </button>
+          )}
+
+          {/* Station Panel rendering */}
+          {showStation && <StationPanel onClose={() => setShowStation(false)} />}
         </div>
 
         {/* Chat panel */}

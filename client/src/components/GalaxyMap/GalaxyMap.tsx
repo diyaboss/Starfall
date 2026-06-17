@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import {
   useGameStore,
   selectMyPlayer,
@@ -88,27 +88,54 @@ function Edge({ from, to, isReachable, fuelCost }: EdgeProps): React.ReactElemen
 
   return (
     <g>
-      <line
-        x1={from.x}
-        y1={from.y}
-        x2={to.x}
-        y2={to.y}
-        stroke={isReachable ? "#3b82f633" : "#1e293b"}
-        strokeWidth={isReachable ? 2 : 1.5}
-        strokeDasharray={isReachable ? "none" : "5 4"}
-      />
-      {isReachable && (
-        <text
-          x={midX}
-          y={midY - 5}
-          fontSize={8}
-          fill="#3b82f6"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          style={{ pointerEvents: "none" }}
-        >
-          -{fuelCost}⛽
-        </text>
+      {isReachable ? (
+        <>
+          <line
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            stroke="#3b82f6"
+            strokeWidth={1.5}
+            strokeOpacity={0.3}
+          >
+            <animate attributeName="stroke-opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
+          </line>
+          <g transform={`translate(${midX}, ${midY})`}>
+            <rect
+              x={-14}
+              y={-11}
+              width={28}
+              height={14}
+              rx={3}
+              fill="#0f172a"
+              stroke="#1e293b"
+              strokeWidth={1}
+              opacity={0.8}
+            />
+            <text
+              x={0}
+              y={-3}
+              fontSize={8}
+              fill="#60a5fa"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ pointerEvents: "none", fontWeight: 600, letterSpacing: "0.05em" }}
+            >
+              -{fuelCost}⛽
+            </text>
+          </g>
+        </>
+      ) : (
+        <line
+          x1={from.x}
+          y1={from.y}
+          x2={to.x}
+          y2={to.y}
+          stroke="#1e293b"
+          strokeWidth={1}
+          strokeDasharray="4 6"
+        />
       )}
     </g>
   );
@@ -179,7 +206,10 @@ function SectorNode({
           strokeWidth={2}
           strokeDasharray="6 3"
           opacity={0.8}
-        />
+        >
+          <animate attributeName="r" values={`${NODE_RADIUS + 12};${NODE_RADIUS + 18};${NODE_RADIUS + 12}`} dur="2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite" />
+        </circle>
       )}
 
       {/* Beacon ring */}
@@ -192,7 +222,9 @@ function SectorNode({
           stroke="#a855f7"
           strokeWidth={2}
           opacity={0.9}
-        />
+        >
+          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.5s" repeatCount="indefinite" />
+        </circle>
       )}
 
       {/* Reachable glow */}
@@ -217,15 +249,28 @@ function SectorNode({
         strokeWidth={strokeWidth}
       />
 
-      {/* Current sector inner dot */}
+      {/* Current sector pulse animation */}
       {isCurrentSector && (
-        <circle
-          cx={sector.x}
-          cy={sector.y}
-          r={5}
-          fill="#ffffff"
-          opacity={0.9}
-        />
+        <>
+          <circle
+            cx={sector.x}
+            cy={sector.y}
+            r={NODE_RADIUS + 4}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth={1.5}
+            opacity={0.8}
+          >
+            <animate attributeName="r" values={`${NODE_RADIUS + 2};${NODE_RADIUS + 8};${NODE_RADIUS + 2}`} dur="1.5s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.8;0;0.8" dur="1.5s" repeatCount="indefinite" />
+          </circle>
+          <circle
+            cx={sector.x}
+            cy={sector.y}
+            r={4}
+            fill="#ffffff"
+          />
+        </>
       )}
 
       {/* Has players indicator */}
@@ -253,12 +298,43 @@ function SectorNode({
         </text>
       )}
 
-      {/* Station dot — sector has a faction service */}
-      {sector.factionServiceId && (
+      {/* Station icon — sector has a faction service */}
+      {sector.factionServiceId && sector.faction === "science_collective" && (
+        <path
+          d={`M ${sector.x} ${sector.y - 7} L ${sector.x + 6} ${sector.y + 4} L ${sector.x - 6} ${sector.y + 4} Z`}
+          fill={factionColor}
+          stroke="#0f172a"
+          strokeWidth={1}
+          style={{ pointerEvents: "none" }}
+        />
+      )}
+      {sector.factionServiceId && sector.faction === "traders_guild" && (
+        <path
+          d={`M ${sector.x} ${sector.y - 6} L ${sector.x + 6} ${sector.y} L ${sector.x} ${sector.y + 6} L ${sector.x - 6} ${sector.y} Z`}
+          fill={factionColor}
+          stroke="#0f172a"
+          strokeWidth={1}
+          style={{ pointerEvents: "none" }}
+        />
+      )}
+      {sector.factionServiceId && sector.faction === "explorer_guild" && (
         <circle
-          cx={sector.x - NODE_RADIUS + 6}
-          cy={sector.y - NODE_RADIUS + 6}
-          r={3.5}
+          cx={sector.x}
+          cy={sector.y}
+          r={5}
+          fill="none"
+          stroke={factionColor}
+          strokeWidth={2}
+          strokeDasharray="2 2"
+          style={{ pointerEvents: "none" }}
+        />
+      )}
+      {sector.factionServiceId && !["science_collective", "traders_guild", "explorer_guild"].includes(sector.faction || "") && (
+        <rect
+          x={sector.x - 4}
+          y={sector.y - 4}
+          width={8}
+          height={8}
           fill={factionColor}
           stroke="#0f172a"
           strokeWidth={1}
@@ -307,11 +383,11 @@ function PreviewNode({
 
   return (
     <g
-      opacity={isReachable ? 0.85 : 0.35}
+      opacity={isReachable ? 0.75 : 0.25}
       onClick={() => {
         if (isReachable) onClick(sector.id);
       }}
-      style={{ cursor: isReachable ? "pointer" : "default" }}
+      style={{ cursor: isReachable ? "pointer" : "default", filter: "grayscale(30%)" }}
       role="button"
       aria-label={`Unknown sector ${sector.name}`}
     >
@@ -319,9 +395,9 @@ function PreviewNode({
         <circle
           cx={x}
           cy={y}
-          r={NODE_RADIUS + 8}
+          r={NODE_RADIUS + 6}
           fill={factionColor}
-          opacity={0.18}
+          opacity={0.12}
           style={{ pointerEvents: "none" }}
         />
       )}
@@ -329,18 +405,18 @@ function PreviewNode({
       <circle
         cx={x}
         cy={y}
-        r={NODE_RADIUS * 0.72}
-        fill={`${factionColor}22`}
-        stroke={isReachable ? factionColor : "#475569"}
-        strokeWidth={isReachable ? 1.8 : 1}
-        strokeDasharray="3 2"
+        r={NODE_RADIUS * 0.6}
+        fill={`${factionColor}11`}
+        stroke={isReachable ? factionColor : "#334155"}
+        strokeWidth={isReachable ? 1.5 : 1}
+        strokeDasharray="4 3"
       />
 
       <text
         x={x}
-        y={y - NODE_RADIUS - 6}
+        y={y - NODE_RADIUS - 4}
         fontSize={8}
-        fill={isReachable ? "#3b82f6" : "#334155"}
+        fill={isReachable ? "#60a5fa" : "#334155"}
         textAnchor="middle"
         dominantBaseline="middle"
         style={{ pointerEvents: "none" }}
@@ -584,7 +660,14 @@ export function GalaxyMap(): React.ReactElement {
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
-  const [activeSectorId, setActiveSectorId] = useState<string | null>(null);
+  const [travelTargetId, setTravelTargetId] = useState<string | null>(null);
+
+  // Clear travel animation when we arrive
+  useEffect(() => {
+    if (myPlayer?.sectorId && myPlayer.sectorId === travelTargetId) {
+      setTravelTargetId(null);
+    }
+  }, [myPlayer?.sectorId, travelTargetId]);
 
   const allSectors = useMemo(
     () => ({ ...visibleSectors, ...previewSectors } as Record<string, Sector | SectorPreview>),
@@ -635,15 +718,13 @@ export function GalaxyMap(): React.ReactElement {
 
   const handleSectorClick = useCallback(
     (sectorId: string) => {
-      if (!myPlayer || myPlayer.isDead) return;
+      if (!myPlayer || myPlayer.isDead || travelTargetId) return;
       if (sectorId === currentSectorId) return;
       if (!reachableSectorIds.has(sectorId)) return;
-      setActiveSectorId(sectorId);
+      setTravelTargetId(sectorId);
       emit("player:move", { targetSectorId: sectorId });
-      // Clear the visual "moving" state after a moment
-      setTimeout(() => setActiveSectorId(null), 1200);
     },
-    [emit, myPlayer, currentSectorId, reachableSectorIds],
+    [emit, myPlayer, currentSectorId, reachableSectorIds, travelTargetId],
   );
 
   const handleMouseEnter = useCallback(
@@ -762,28 +843,52 @@ export function GalaxyMap(): React.ReactElement {
 
         {/* Preview nodes */}
         <g>
-          {Object.values(previewSectors).map((sector) => {
-            if (visibleSectors[sector.id]) return null;
-            const s = sector as Partial<Sector> & SectorPreview;
-            if (s.x == null || s.y == null) return null;
-            return (
-              <PreviewNode
-                key={sector.id}
-                sector={sector}
-                x={s.x}
-                y={s.y}
-                isReachable={reachableSectorIds.has(sector.id)}
-                onClick={handleSectorClick}
-              />
-            );
-          })}
+          {Object.values(previewSectors).map((sector) => (
+            <PreviewNode
+              key={sector.id}
+              sector={sector as SectorPreview}
+              x={sector.x!}
+              y={sector.y!}
+              isReachable={reachableSectorIds.has(sector.id)}
+              onClick={handleSectorClick}
+            />
+          ))}
         </g>
+
+        {/* Travel Line Animation */}
+        {travelTargetId && currentSectorId && allSectors[travelTargetId] && (
+          <g>
+            <line
+              x1={visibleSectors[currentSectorId].x}
+              y1={visibleSectors[currentSectorId].y}
+              x2={allSectors[travelTargetId].x!}
+              y2={allSectors[travelTargetId].y!}
+              stroke={myPlayer?.color ?? "#ffffff"}
+              strokeWidth={3}
+              opacity={0.8}
+              strokeDasharray="10 5"
+            >
+              <animate attributeName="stroke-dashoffset" from="15" to="0" dur="0.3s" repeatCount="indefinite" />
+            </line>
+            <circle
+              cx={allSectors[travelTargetId].x!}
+              cy={allSectors[travelTargetId].y!}
+              r={NODE_RADIUS + 10}
+              fill="none"
+              stroke={myPlayer?.color ?? "#ffffff"}
+              strokeWidth={2}
+            >
+              <animate attributeName="r" values={`${NODE_RADIUS};${NODE_RADIUS + 20}`} dur="0.6s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0" dur="0.6s" repeatCount="indefinite" />
+            </circle>
+          </g>
+        )}
 
         {/* Visible sector nodes */}
         <g>
           {Object.values(visibleSectors).map((sector) => {
             const sectorPlayers = playersBySector[sector.id] ?? [];
-            const isMovingTo = activeSectorId === sector.id;
+            const isMovingTo = travelTargetId === sector.id;
 
             return (
               <g

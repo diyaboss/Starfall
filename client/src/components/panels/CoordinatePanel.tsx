@@ -3,6 +3,7 @@ import {
   useGameStore,
   selectMyPlayer,
   selectPlayers,
+  selectFleets,
 } from "@/store/gameStore";
 import { useEmit } from "@/hooks/useSocket";
 import type { CoordShardType } from "@shared/types";
@@ -29,80 +30,7 @@ const SHARD_COLORS: Record<CoordShardType, string> = {
 // Pending exchange banner
 // ---------------------------------------------------------------------------
 
-function ExchangeBanner(): React.ReactElement | null {
-  const emit = useEmit();
-  const pending = useGameStore((s) => s.pendingExchange);
-  const clearPendingExchange = useGameStore((s) => s.clearPendingExchange);
-
-  const handleAccept = useCallback(() => {
-    if (!pending) return;
-    emit("coord:exchangeResponse", { requesterId: pending.requesterId, accepted: true });
-    clearPendingExchange();
-  }, [emit, pending, clearPendingExchange]);
-
-  const handleDecline = useCallback(() => {
-    if (!pending) return;
-    emit("coord:exchangeResponse", { requesterId: pending.requesterId, accepted: false });
-    clearPendingExchange();
-  }, [emit, pending, clearPendingExchange]);
-
-  if (!pending) return null;
-
-  return (
-    <div
-      style={{
-        background: "#1e293b",
-        border: "1px solid #f59e0b",
-        borderRadius: 6,
-        padding: "10px 12px",
-        marginBottom: 12,
-      }}
-    >
-      <div style={{ fontSize: 11, color: "#f59e0b", marginBottom: 6 }}>
-        Coordinate Exchange Request
-      </div>
-      <div style={{ fontSize: 12, color: "#e2e8f0", marginBottom: 10 }}>
-        <span style={{ color: "#94a3b8" }}>From: </span>
-        {pending.requesterCallsign}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          onClick={handleAccept}
-          style={{
-            flex: 1,
-            background: "#22c55e",
-            border: "none",
-            borderRadius: 5,
-            color: "#fff",
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "6px 0",
-            cursor: "pointer",
-            fontFamily: "monospace",
-          }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={handleDecline}
-          style={{
-            flex: 1,
-            background: "transparent",
-            border: "1px solid #334155",
-            borderRadius: 5,
-            color: "#64748b",
-            fontSize: 11,
-            padding: "6px 0",
-            cursor: "pointer",
-            fontFamily: "monospace",
-          }}
-        >
-          Decline
-        </button>
-      </div>
-    </div>
-  );
-}
+// Moved ExchangeBanner to HUD.tsx
 
 // ---------------------------------------------------------------------------
 // CoordinatePanel
@@ -112,6 +40,7 @@ export function CoordinatePanel(): React.ReactElement {
   const emit = useEmit();
   const myPlayer = useGameStore(selectMyPlayer);
   const players = useGameStore(selectPlayers);
+  const fleets = useGameStore(selectFleets);
   
 
   // received trades live on the player's own shard.sharedWith → but the client
@@ -185,7 +114,6 @@ export function CoordinatePanel(): React.ReactElement {
             backdropFilter: "blur(4px)",
           }}
         >
-          <ExchangeBanner />
 
           {/* Own shard */}
           <div style={{ marginBottom: 16 }}>
@@ -242,6 +170,18 @@ export function CoordinatePanel(): React.ReactElement {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Beacon Progress */}
+          {myPlayer.fleetId && fleets[myPlayer.fleetId] && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: "#475569", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>
+                Beacon Progress
+              </div>
+              <div style={{ fontSize: 11, color: fleets[myPlayer.fleetId].coordsAssembled === 4 ? "#22c55e" : "#e2e8f0", fontFamily: "monospace" }}>
+                {fleets[myPlayer.fleetId].coordsAssembled} / 4 Coordinates Assembled
               </div>
             </div>
           )}

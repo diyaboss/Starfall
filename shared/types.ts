@@ -261,7 +261,10 @@ export interface Player {
   isDead: boolean;
   joinedAt: number;
   /** Populated when health reaches 0 */
+  /** Populated when health reaches 0 */
   diedAt: number | null;
+  /** True if the player individually holds the Beacon Core */
+  hasBeaconCore: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -365,6 +368,10 @@ export interface GameState {
   endedAt: number | null;
   winner: string | null;       // socket ID
   winnerFleetId: string | null;
+  winnerFleetName: string | null;
+  finalExploredSectorCount: number;
+  finalFuelRemaining: number;
+  finalShardCount: number;
   sectors: Record<string, Sector>;
   players: Record<string, Player>;
   fleets: Record<string, Fleet>;
@@ -448,6 +455,7 @@ export interface AdminAdjustPlayerPayload {
   fuel?: number;
   health?: number;
   energy?: number;
+  hasBeaconCore?: boolean;
 }
 
 export interface AdminKickPayload {
@@ -492,6 +500,10 @@ export interface ClientGameState {
   endedAt: number | null;
   winner: string | null;
   winnerFleetId: string | null;
+  winnerFleetName: string | null;
+  finalExploredSectorCount: number | null;
+  finalFuelRemaining: number | null;
+  finalShardCount: number | null;
   /** Only sectors the player can see — filtered by server */
   visibleSectors: Record<string, Sector>;
   /** Sectors visible as name-only previews (connected but unvisited) */
@@ -683,7 +695,9 @@ export interface GameEndedPayload {
   winnerFleetId: string | null;
   winnerFleetName: string | null;
   reason: "beacon_activated" | "time_expired" | "admin_ended";
-  finalFleetPower: Record<string, number>; // fleetId -> FP
+  finalExploredSectorCount: number;
+  finalFuelRemaining: number;
+  finalShardCount: number;
 }
 
 export interface KickedPayload {

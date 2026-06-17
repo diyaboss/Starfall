@@ -39,11 +39,28 @@ function StarField(): React.ReactElement {
     const draw = () => {
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
-      const t = frame * 0.016;
+      
+      // Draw subtle galactic core gradient
+      const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) * 0.8);
+      gradient.addColorStop(0, "rgba(30, 58, 138, 0.15)");
+      gradient.addColorStop(0.5, "rgba(15, 23, 42, 0.05)");
+      gradient.addColorStop(1, "rgba(5, 13, 26, 0)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const t = frame * 0.012;
       for (const s of stars) {
+        // Slow pan upwards and to the left for parallax
+        let sx = s.x * width - t * s.speed * 8000;
+        let sy = s.y * height - t * s.speed * 12000;
+        
+        // Wrap around
+        sx = ((sx % width) + width) % width;
+        sy = ((sy % height) + height) % height;
+
         const pulse = s.a * (0.6 + 0.4 * Math.sin(t * s.speed * 400 + s.phase));
         ctx.beginPath();
-        ctx.arc(s.x * width, s.y * height, s.r, 0, Math.PI * 2);
+        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(226,232,240,${pulse})`;
         ctx.fill();
       }
@@ -67,6 +84,7 @@ function StarField(): React.ReactElement {
         width: "100%",
         height: "100%",
         pointerEvents: "none",
+        background: "radial-gradient(circle at 50% 50%, #0a1428 0%, #050d1a 100%)",
       }}
     />
   );
@@ -372,32 +390,33 @@ export function LobbyScreen(): React.ReactElement {
       <StarField />
 
       {/* Title */}
-      <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1, marginTop: -60 }}>
         <div
           style={{
-            fontSize: 11,
-            letterSpacing: "0.3em",
+            fontSize: 12,
+            letterSpacing: "0.4em",
             color: "#3b82f6",
             textTransform: "uppercase",
-            marginBottom: 10,
+            marginBottom: 16,
+            opacity: 0.8,
           }}
         >
           ✦ ✦ ✦
         </div>
         <h1
           style={{
-            fontSize: 48,
+            fontSize: 64,
             fontWeight: 900,
-            letterSpacing: "0.18em",
-            color: "#f1f5f9",
+            letterSpacing: "0.15em",
+            color: "#f8fafc",
             margin: 0,
             textTransform: "uppercase",
-            textShadow: "0 0 40px rgba(59,130,246,0.4)",
+            textShadow: "0 0 30px rgba(59,130,246,0.5), 0 4px 10px rgba(0,0,0,0.5)",
           }}
         >
           STARFALL
         </h1>
-        <p style={{ fontSize: 12, color: "#475569", marginTop: 8, letterSpacing: "0.12em" }}>
+        <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 12, letterSpacing: "0.15em", fontWeight: 600 }}>
           MULTIPLAYER SPACE EXPLORATION
         </p>
       </div>

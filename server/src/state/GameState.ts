@@ -181,6 +181,10 @@ function createInitialState(): GameState {
     endedAt: null,
     winner: null,
     winnerFleetId: null,
+    winnerFleetName: null,
+    finalExploredSectorCount: 0,
+    finalFuelRemaining: 0,
+    finalShardCount: 0,
     sectors,
     players: {},
     fleets: {},
@@ -267,6 +271,7 @@ export function addPlayer(socketId: string, username: string): Player {
     isDead: false,
     joinedAt: Date.now(),
     diedAt: null,
+    hasBeaconCore: false,
   };
 
   gameState.players[playerId] = player;
@@ -728,10 +733,17 @@ export function buildClientSnapshot(playerId: string): ClientGameState | null {
   const fleet = player.fleetId ? gameState.fleets[player.fleetId] : null;
 
   // Sectors this player is allowed to see in full detail
-  const fullVisibleIds = new Set<string>([
-    ...player.exploredSectors,
-    ...(fleet?.combinedExploredSectors ?? []),
-  ]);
+  let fullVisibleIds = new Set<string>();
+
+  if (player.isAdmin) {
+    // Admin sees the entire map
+    fullVisibleIds = new Set(Object.keys(gameState.sectors));
+  } else {
+    fullVisibleIds = new Set<string>([
+      ...player.exploredSectors,
+      ...(fleet?.combinedExploredSectors ?? []),
+    ]);
+  }
 
   // Connected-but-unvisited sectors (preview only)
   const previewIds = new Set<string>();
@@ -796,6 +808,10 @@ for (const sectorId of previewIds) {
     endedAt: gameState.endedAt,
     winner: gameState.winner,
     winnerFleetId: gameState.winnerFleetId,
+    winnerFleetName: gameState.winnerFleetName,
+    finalExploredSectorCount: gameState.finalExploredSectorCount,
+    finalFuelRemaining: gameState.finalFuelRemaining,
+    finalShardCount: gameState.finalShardCount,
     visibleSectors,
     previewSectors,
     players,
@@ -863,12 +879,14 @@ function buildClientBeacon(
   const convoy = gameState.npcConvoys["convoy-beacon-core"];
 
   // Convoy location is only visible if it is in a sector the player can see
+  // Admins bypass this.
   const convoyVisible =
-    convoy !== undefined && visibleSectorIds.has(convoy.sectorId);
+    convoy !== undefined && (player.isAdmin || visibleSectorIds.has(convoy.sectorId));
 
   // Convergence sector revealed only when beacon phase is "convergence" or later
+  // Admins can see it at any time.
   const convergenceVisible =
-    beacon.phase === "convergence" || beacon.phase === "activated";
+    player.isAdmin || beacon.phase === "convergence" || beacon.phase === "activated";
 
   return {
     phase: beacon.phase,

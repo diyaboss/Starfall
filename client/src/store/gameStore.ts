@@ -102,6 +102,9 @@ export interface GameStoreState {
   activePlayerCtx: ActivePlayerContext | null;
   setActivePlayerCtx: (ctx: ActivePlayerContext | null) => void;
 
+  activeOverlayBanner: { text: string; subtext?: string } | null;
+  setOverlayBanner: (banner: { text: string; subtext?: string } | null) => void;
+
   // Reset
   reset: () => void;
 }
@@ -122,6 +125,7 @@ const initialState: Pick<
   | "activeServiceCtx"
   | "activeMissionCtx"
   | "activePlayerCtx"
+  | "activeOverlayBanner"
 > = {
   connectionStatus: "disconnected",
   myPlayerId: null,
@@ -133,6 +137,7 @@ const initialState: Pick<
   activeServiceCtx: null,
   activeMissionCtx: null,
   activePlayerCtx: null,
+  activeOverlayBanner: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -170,6 +175,10 @@ console.log("SNAPSHOT previewSectors", Object.keys(gs.previewSectors));
           phase: "ended" as const,
           winner: payload.winner,
           winnerFleetId: payload.winnerFleetId,
+          winnerFleetName: payload.winnerFleetName,
+          finalExploredSectorCount: payload.finalExploredSectorCount,
+          finalFuelRemaining: payload.finalFuelRemaining,
+          finalShardCount: payload.finalShardCount,
           endedAt: Date.now(),
         },
       };
@@ -421,6 +430,8 @@ console.log("SNAPSHOT previewSectors", Object.keys(gs.previewSectors));
   setActiveServiceCtx: (ctx) => set({ activeServiceCtx: ctx }),
   setActiveMissionCtx: (ctx) => set({ activeMissionCtx: ctx }),
   setActivePlayerCtx: (ctx) => set({ activePlayerCtx: ctx }),
+
+  setOverlayBanner: (banner) => set({ activeOverlayBanner: banner }),
 
   // ── Reset ─────────────────────────────────────────────────────────────────
   reset: () => set({ ...initialState }),

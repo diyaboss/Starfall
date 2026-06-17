@@ -46,6 +46,7 @@ import {
 } from "./state/GameState";
 import { registerPlayerHandlers } from "./handlers/playerHandlers";
 import { registerMovementHandlers } from "./handlers/movementHandlers";
+import { registerMissionHandlers, spawnMissionsIfNeeded } from "./handlers/missionHandlers";
 import {
   startGameLoop,
   stopGameLoop,
@@ -148,6 +149,9 @@ function startGame(): void {
     setGamePhase("active");
     broadcastSystem("🚀 Starfall has begun! Find other players and share your coordinate shards.");
     io?.to(ROOM_GLOBAL).emit("game:phaseChanged", { phase: "active" });
+
+    spawnMissionsIfNeeded(io!);
+
     startGameLoop(io!); // loop now has a non-null io guaranteed
   }, tutorialDurationMs);
 }
@@ -179,9 +183,17 @@ function endGame(
   const winningFleet =
     winnerFleetId ? gameState.fleets[winnerFleetId] : null;
 
-  const finalFleetPower: Record<string, number> = {};
-  for (const [fid, fleet] of Object.entries(gameState.fleets)) {
-    finalFleetPower[fid] = fleet.fleetPower;
+  let finalExploredSectorCount = 0;
+  let finalFuelRemaining = 0;
+  let finalShardCount = 0;
+
+  if (winnerPlayerId) {
+    const player = gameState.players[winnerPlayerId];
+    if (player) {
+      finalFuelRemaining = player.fuel;
+      finalShardCount = player.shard.sharedWith.length + 1;
+      finalExploredSectorCount = player.exploredSectors.length;
+    }
   }
 
   const payload: GameEndedPayload = {
@@ -189,7 +201,9 @@ function endGame(
     winnerFleetId: gameState.winnerFleetId,
     winnerFleetName: winningFleet?.name ?? null,
     reason,
-    finalFleetPower,
+    finalExploredSectorCount,
+    finalFuelRemaining,
+    finalShardCount,
   };
   io.to(ROOM_GLOBAL).emit("game:ended", payload);
 
@@ -282,6 +296,7 @@ function registerAdminHandlers(socket: Socket): void {
     if (raw.fuel !== undefined) player.fuel = Math.min(100, Math.max(0, raw.fuel));
     if (raw.health !== undefined) player.health = Math.min(100, Math.max(0, raw.health));
     if (raw.energy !== undefined) player.energy = Math.min(100, Math.max(0, raw.energy));
+    if (raw.hasBeaconCore !== undefined) player.hasBeaconCore = Boolean(raw.hasBeaconCore);
 
     io?.to(ROOM_GLOBAL).emit("player:updated", {
       playerId: player.id,
@@ -412,6 +427,7 @@ export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
     // Delegate domain handlers
     registerPlayerHandlers(io!, socket);
     registerMovementHandlers(io!, socket);
+    registerMissionHandlers(io!, socket);
     registerAdminHandlers(socket);
 
     socket.on("disconnect", (reason) => {

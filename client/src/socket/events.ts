@@ -43,6 +43,17 @@ export function registerSocketEvents(): void {
     store().setPhase(payload.phase);
   });
 
+  // ── game:countdown ───────────────────────────────────────────────────────
+  socket.on("game:countdown", (payload: { text: string; subtext?: string }) => {
+    store().setOverlayBanner(payload);
+    setTimeout(() => {
+      // Fade out after 8s
+      if (store().activeOverlayBanner?.text === payload.text) {
+        store().setOverlayBanner(null);
+      }
+    }, 8000);
+  });
+
   // ── game:ended ───────────────────────────────────────────────────────────
   socket.on("game:ended", (payload) => {
     store().setGameEnded(payload);
@@ -141,7 +152,15 @@ export function registerSocketEvents(): void {
   // ── beacon:phaseChanged ──────────────────────────────────────────────────
   socket.on("beacon:phaseChanged", (payload) => {
     store().applyBeaconPhaseChanged(payload);
+
     if (payload.phase === "convergence") {
+      store().setOverlayBanner({
+        text: "CONVERGENCE DETECTED",
+        subtext: "CORE NEXUS LOCATED - RACE TO THE BEACON HAS BEGUN",
+      });
+      setTimeout(() => {
+        store().setOverlayBanner(null);
+      }, 8000);
       addNotification("🌟 Convergence sector revealed!", "warning", 10_000);
     }
   });
@@ -189,6 +208,15 @@ export function registerSocketEvents(): void {
       5000
     );
     store().clearPendingExchange();
+  });
+
+  // ── coord:exchangeRejected ───────────────────────────────────────────────
+  socket.on("coord:exchangeRejected", (payload) => {
+    addNotification(
+      `${payload.targetCallsign} declined your exchange request.`,
+      "warning",
+      5000
+    );
   });
 
   // ── chat:message ─────────────────────────────────────────────────────────

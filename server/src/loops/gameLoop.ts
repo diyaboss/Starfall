@@ -60,6 +60,12 @@ const ROOM_GLOBAL = "global";
 
 let loopHandle: ReturnType<typeof setInterval> | null = null;
 
+const countdownState = {
+  notified5m: false,
+  notified3m: false,
+  notified1m: false,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -244,6 +250,27 @@ function tickPhaseTransitions(io: Server): void {
     );
   }
 
+  // Countdown broadcasts
+  if (gameState.beacon.phase === "convergence") {
+    const remainingMs = gameDurationMs - elapsed;
+    
+    if (!countdownState.notified5m && remainingMs <= 5 * 60 * 1000) {
+      countdownState.notified5m = true;
+      io.to(ROOM_GLOBAL).emit("game:countdown", { text: "5 MINUTES REMAINING" });
+      broadcastSystem(io, "⚠ 5 MINUTES REMAINING UNTIL CRITICAL FAILURE ⚠");
+    }
+    else if (!countdownState.notified3m && remainingMs <= 3 * 60 * 1000) {
+      countdownState.notified3m = true;
+      io.to(ROOM_GLOBAL).emit("game:countdown", { text: "3 MINUTES REMAINING" });
+      broadcastSystem(io, "⚠ 3 MINUTES REMAINING UNTIL CRITICAL FAILURE ⚠");
+    }
+    else if (!countdownState.notified1m && remainingMs <= 1 * 60 * 1000) {
+      countdownState.notified1m = true;
+      io.to(ROOM_GLOBAL).emit("game:countdown", { text: "1 MINUTE REMAINING" });
+      broadcastSystem(io, "⚠ 1 MINUTE REMAINING UNTIL CRITICAL FAILURE ⚠");
+    }
+  }
+
   // Time expiry → game ended
   if (gameState.phase === "active" && elapsed >= gameDurationMs) {
     setGamePhase("ended");
@@ -264,17 +291,14 @@ function tickPhaseTransitions(io: Server): void {
       setWinner(winnerId, topFleetId);
     }
 
-    const finalFleetPower: Record<string, number> = {};
-    for (const [fid, fleet] of Object.entries(gameState.fleets)) {
-      finalFleetPower[fid] = fleet.fleetPower;
-    }
-
     const endedPayload: GameEndedPayload = {
       winner: gameState.winner,
       winnerFleetId: gameState.winnerFleetId,
       winnerFleetName: winningFleet?.name ?? null,
       reason: "time_expired",
-      finalFleetPower,
+      finalExploredSectorCount: 0,
+      finalFuelRemaining: 0,
+      finalShardCount: 0,
     };
     io.to(ROOM_GLOBAL).emit("game:ended", endedPayload);
     broadcastSystem(io, "⏱ Time expired. The Beacon Core was never activated.");
@@ -317,6 +341,9 @@ export function stopGameLoop(): void {
   if (loopHandle !== null) {
     clearInterval(loopHandle);
     loopHandle = null;
+    countdownState.notified5m = false;
+    countdownState.notified3m = false;
+    countdownState.notified1m = false;
     console.log("[gameLoop] Game loop stopped.");
   }
 }

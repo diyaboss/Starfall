@@ -39,6 +39,7 @@ import type {
   ErrorPayload,
   ChatMessage,
   PublicPlayerInfo,
+  UseServicePayload,
 } from "@shared/types";
 import {
   gameState,
@@ -54,7 +55,9 @@ import {
   removePlayerFromFleet,
   appendChatMessage,
   getConnectedPlayerCount,
+  setWinner,
 } from "../state/GameState";
+import { endGame } from "../socket";
 import { v4 as uuidv4 } from "uuid";
 
 // ---------------------------------------------------------------------------
@@ -222,7 +225,14 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
       return;
     }
 
-    if (gameState.phase === "ended") {
+    const adminCode = process.env["ADMIN_CODE"];
+    const isAdminJoin = Boolean(
+      adminCode &&
+      typeof payload.adminCode === "string" &&
+      payload.adminCode === adminCode
+    );
+
+    if (gameState.phase === "ended" && !isAdminJoin) {
       emitError(socket, "game_ended", "This game session has ended.");
       return;
     }
@@ -245,18 +255,12 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
     const player = addPlayer(socket.id, username);
 
     // Admin elevation
-    const adminCode = process.env["ADMIN_CODE"];
-
     console.log("[join admin check]", {
       username: payload.username,
       receivedAdminCode: payload.adminCode,
       expectedAdminCode: adminCode,
     });
-    if (
-      adminCode &&
-      typeof payload.adminCode === "string" &&
-      payload.adminCode === adminCode
-    ) {
+    if (isAdminJoin) {
       player.isAdmin = true;
       socket.data.isAdmin = true;
       socket.join(ROOM_ADMIN);
@@ -778,5 +782,152 @@ export function registerPlayerHandlers(io: Server, socket: Socket): void {
       }
       io.to(fleetRoom(player.fleetId)).emit("chat:message", message);
     }
+  });
+
+  // ── beacon:activate ──────────────────────────────────────────────────────
+  socket.on("beacon:activate", () => {
+    const playerId = playerIdFromSocket(socket.id);
+    if (!playerId) {
+      emitError(socket, "not_joined", "Not in game.");
+      return;
+    }
+
+    const player = gameState.players[playerId];
+    if (!player || !player.isConnected || player.isDead) {
+      emitError(socket, "player_invalid", "Player is disconnected, dead, or not found.");
+      return;
+    }
+
+    if (gameState.phase !== "active" || gameState.beacon.phase !== "convergence") {
+      emitError(socket, "invalid_phase", "The beacon cannot be activated right now.");
+      return;
+    }
+
+    if (player.sectorId !== gameState.beacon.convergenceSectorId) {
+      emitError(socket, "invalid_sector", "You are not at the convergence sector.");
+      return;
+    }
+
+    const fleet = player.fleetId ? gameState.fleets[player.fleetId] : null;
+    const hasCore = player.hasBeaconCore || (fleet?.hasBeaconCore ?? false);
+    if (!hasCore) {
+      emitError(socket, "missing_core", "You need the Beacon Core to activate the beacon.");
+      return;
+    }
+
+    setWinner(player.id, player.fleetId);
+    endGame("beacon_activated", player.id, player.fleetId);
+  });
+
+  // ── service:use ──────────────────────────────────────────────────────────
+  socket.on("service:use", (payload: UseServicePayload) => {
+    const playerId = playerIdFromSocket(socket.id);
+    if (!playerId) {
+      emitError(socket, "not_joined", "Not in game.");
+      return;
+    }
+
+    const player = gameState.players[playerId];
+    if (!player || !player.isConnected || player.isDead) {
+      emitError(socket, "player_invalid", "Player is invalid.");
+      return;
+    }
+
+    if (gameState.phase !== "active") {
+      emitError(socket, "invalid_phase", "Services are only available during active phase.");
+      return;
+    }
+
+    const sector = gameState.sectors[player.sectorId];
+    if (!sector || !sector.factionServiceId) {
+      emitError(socket, "no_station", "You are not at a station.");
+      return;
+    }
+
+    const serviceDef = gameState.npcServices[sector.factionServiceId];
+    if (!serviceDef || serviceDef.id !== payload.serviceId) {
+      emitError(socket, "invalid_service", "Station does not match requested service.");
+      return;
+    }
+
+    const option = serviceDef.services.find(s => s.type === payload.serviceType);
+    if (!option) {
+      emitError(socket, "invalid_service", "Service not offered here.");
+      return;
+    }
+
+    if (player.fuel < option.fuelCost) {
+      emitError(socket, "insufficient_funds", "Not enough fuel for this service.");
+      return;
+    }
+    if (player.energy < option.energyCost) {
+      emitError(socket, "insufficient_funds", "Not enough energy for this service.");
+      return;
+    }
+
+    // Deduct costs
+    player.fuel -= option.fuelCost;
+    player.energy -= option.energyCost;
+
+    let successMessage = "";
+
+    // Execute service logic
+    switch (option.type) {
+      case "fuel_purchase":
+        player.fuel = 100;
+        successMessage = "Ship refueled to 100%.";
+        break;
+      case "health_purchase":
+        player.health = 100;
+        successMessage = "Hull repaired to 100%.";
+        break;
+      case "sector_scan": {
+        // Reveal adjacent sectors
+        const adjacent = sector.connectedTo;
+        let revealedCount = 0;
+        for (const adjId of adjacent) {
+          if (!player.exploredSectors.includes(adjId)) {
+            player.exploredSectors.push(adjId);
+            revealedCount++;
+            
+            // Mark discovered globally
+            const adjSector = gameState.sectors[adjId];
+            if (adjSector && !adjSector.discoveredBy.includes(player.id)) {
+              adjSector.discoveredBy.push(player.id);
+            }
+          }
+        }
+        successMessage = `Deep scan complete. Revealed ${revealedCount} adjacent sector(s).`;
+        break;
+      }
+      default:
+        emitError(socket, "not_implemented", "This service is not implemented yet.");
+        // refund
+        player.fuel += option.fuelCost;
+        player.energy += option.energyCost;
+        return;
+    }
+
+    // Send chat system message for success
+    const sysMsg: ChatMessage = {
+      id: uuidv4(),
+      senderId: "system",
+      senderName: "System",
+      senderCallsign: "System",
+      senderColor: "#95a5a6",
+      channel: "system",
+      text: successMessage,
+      timestamp: Date.now(),
+    };
+    socket.emit("chat:message", sysMsg);
+
+    // Emit updated player state
+    io.to("global").emit("player:updated", {
+      playerId: player.id,
+      fuel: player.fuel,
+      energy: player.energy,
+      health: player.health,
+      exploredSectors: player.exploredSectors,
+    });
   });
 }

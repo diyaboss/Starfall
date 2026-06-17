@@ -1,0 +1,27 @@
+{
+  "name": "starfall",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:all": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "build:all": "npm run build --prefix client && npm run build --prefix server",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "start:all": "concurrently \"npm run preview --prefix client\" \"npm start --prefix server\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diyaboss/Starfall.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/diyaboss/Starfall/issues"
+  },
+  "homepage": "https://github.com/diyaboss/Starfall#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}

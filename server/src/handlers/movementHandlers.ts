@@ -41,6 +41,7 @@ import {
   movePlayer,
   appendChatMessage,
 } from "../state/GameState";
+import { checkAutoCompletion } from "./missionHandlers";
 import { v4 as uuidv4 } from "uuid";
 
 // ---------------------------------------------------------------------------
@@ -226,6 +227,10 @@ export function registerMovementHandlers(io: Server, socket: Socket): void {
       fuel: result.fuelRemaining,
     };
     socket.emit("player:updated", updatedPayload);
+
+    // ── Auto Completion for Missions ──────────────────────────────────────
+    checkAutoCompletion(io, playerId, result.toSectorId);
+
     // Send discovered sector to the moving player so solo players can promote
 // preview sector -> visible sector after movement.
 if (!wasAlreadyDiscovered) {

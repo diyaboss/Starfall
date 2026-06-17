@@ -390,116 +390,32 @@ const SECTOR_SEEDS: SectorSeed[] = [
 // ---------------------------------------------------------------------------
 
 function buildServiceOptions(factionId: FactionID): ServiceOption[] {
-  const base: Record<FactionID, ServiceOption[]> = {
-    science_collective: [
-      {
-        type: "sector_scan" as ServiceType,
-        label: "Sector Deep Scan",
-        description: "Reveal contents of all adjacent sectors.",
-        fuelCost: 0,
-        energyCost: 20,
-        minReputation: -100,
-      },
-      {
-        type: "coord_decode" as ServiceType,
-        label: "Coordinate Decode",
-        description: "Reveal the hidden digit of a traded coordinate shard.",
-        fuelCost: 0,
-        energyCost: 30,
-        minReputation: 10,
-      },
-      {
-        type: "beacon_triangulation" as ServiceType,
-        label: "Beacon Triangulation",
-        description: "Estimate the Beacon Core convoy location within 3 sectors.",
-        fuelCost: 0,
-        energyCost: 40,
-        minReputation: 30,
-      },
-    ],
-    traders_guild: [
-      {
-        type: "fuel_purchase" as ServiceType,
-        label: "Buy Fuel",
-        description: "Refuel your ship. Costs energy.",
-        fuelCost: 0,
-        energyCost: 15,
-        minReputation: -100,
-      },
-      {
-        type: "energy_purchase" as ServiceType,
-        label: "Buy Energy Cell",
-        description: "Restore energy. Costs fuel.",
-        fuelCost: 15,
-        energyCost: 0,
-        minReputation: -100,
-      },
-      {
-        type: "nav_key_broker" as ServiceType,
-        label: "Nav Key Broker",
-        description: "Broker a nav key trade with another player using escrow.",
-        fuelCost: 10,
-        energyCost: 10,
-        minReputation: 20,
-      },
-    ],
-    mining_consortium: [
-      {
-        type: "refuel_discount" as ServiceType,
-        label: "Deep Refuel",
-        description: "Full refuel at half the standard energy cost.",
-        fuelCost: 0,
-        energyCost: 8,
-        minReputation: -100,
-      },
-      {
-        type: "mine_fuel" as ServiceType,
-        label: "Mining Contract",
-        description: "Multi-step extraction mission. High fuel reward.",
-        fuelCost: 0,
-        energyCost: 0,
-        minReputation: 0,
-      },
-    ],
-    pirate_clans: [
-      {
-        type: "black_market_intel" as ServiceType,
-        label: "Black Market Intel",
-        description: "Buy precise Beacon Core convoy location. Costs reputation.",
-        fuelCost: 20,
-        energyCost: 20,
-        minReputation: -50,
-      },
-      {
-        type: "raid_contract" as ServiceType,
-        label: "Raid Contract",
-        description: "Attempt to steal a nav key from another player.",
-        fuelCost: 15,
-        energyCost: 15,
-        minReputation: 0,
-      },
-    ],
-    explorer_guild: [
-      {
-        type: "map_reveal" as ServiceType,
-        label: "Regional Map",
-        description: "Reveal names and connections of 5 nearby dark sectors.",
-        fuelCost: 20,
-        energyCost: 0,
-        minReputation: -100,
-      },
-      {
-        type: "exploration_contract" as ServiceType,
-        label: "Exploration Contract",
-        description: "Race to a target sector before any other player for FP.",
-        fuelCost: 0,
-        energyCost: 0,
-        minReputation: 0,
-      },
-    ],
-  };
-
-  return base[factionId] ?? [];
+  return [
+    {
+      type: "fuel_purchase" as ServiceType,
+      label: "Refuel",
+      description: "Restore ship fuel to 100%. Costs 20 Energy.",
+      fuelCost: 0,
+      energyCost: 20,
+      minReputation: -100,
+    },
+    {
+      type: "health_purchase" as ServiceType,
+      label: "Repair",
+      description: "Restore hull integrity to 100%. Costs 30 Energy.",
+      fuelCost: 0,
+      energyCost: 30,
+      minReputation: -100,
+    },
+    {
+      type: "sector_scan" as ServiceType,
+      label: "Deep Scan",
+      description: "Reveal adjacent sector details. Costs 10 Energy.",
+      fuelCost: 0,
+      energyCost: 10,
+      minReputation: -100,
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------

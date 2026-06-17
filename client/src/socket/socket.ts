@@ -47,6 +47,7 @@ import type {
 export interface ServerToClientEvents {
   "game:stateSnapshot": (payload: StateSnapshotPayload) => void;
   "game:phaseChanged": (payload: { phase: GamePhase }) => void;
+  "game:countdown": (payload: { text: string; subtext?: string }) => void;
   "game:ended": (payload: GameEndedPayload) => void;
 
   "player:joined": (payload: PlayerJoinedPayload) => void;
